@@ -76,3 +76,44 @@ async def get_response(conversation_history: list[dict], user_context: str = "")
         return final_response.choices[0].message.content
 
     return message.content
+  
+async def transcribe_audio(file_path: str) -> str:
+    """
+    Transcribes a voice message to text using Groq's free Whisper endpoint.
+    file_path should point to a local audio file (e.g. downloaded .ogg from Telegram).
+    """
+    with open(file_path, "rb") as audio_file:
+        transcription = client.audio.transcriptions.create(
+            file=audio_file,
+            model="whisper-large-v3-turbo",
+            response_format="text",
+        )
+    return transcription if isinstance(transcription, str) else transcription.text
+
+
+async def analyze_image(image_base64: str, caption: str = "") -> str:
+    """
+    Sends an image to a Groq vision model for understanding (e.g. a chart,
+    screenshot of a report, or company logo/photo the user shares).
+    """
+    user_text = caption.strip() if caption.strip() else (
+        "Describe what's in this image. If it's a financial chart, table, or "
+        "report screenshot, summarize the key numbers and what stands out."
+    )
+    response = client.chat.completions.create(
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_text},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+                    },
+                ],
+            }
+        ],
+        temperature=0.4,
+    )
+    return response.choices[0].message.content
