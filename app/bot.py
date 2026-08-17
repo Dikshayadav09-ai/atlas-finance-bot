@@ -43,9 +43,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Placeholder: voice transcription (e.g. via Groq's Whisper endpoint) goes here.
-    # Wire this up to download update.message.voice, transcribe it, then pass the
-    # resulting text into the same handle_text logic above.
     await update.message.reply_text(
         "Voice message support isn't wired up yet in this starter — but the hook is here "
         "in handle_voice() in app/bot.py, ready for you to add transcription."
@@ -53,26 +50,36 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Placeholder: image understanding (charts, screenshots of reports, etc.)
-    # goes here - pass the image to a vision-capable model.
     await update.message.reply_text(
         "Image support isn't wired up yet in this starter — the hook is in "
         "handle_photo() in app/bot.py, ready for you to add vision analysis."
     )
 
 
+async def on_startup(application: Application):
+    """
+    Runs once the bot's event loop is actually running. The scheduler MUST be
+    started from here (not before run_polling()) because AsyncIOScheduler
+    needs a running event loop to attach to.
+    """
+    start_scheduler(application)
+
+
 def main():
     validate_config()
     init_db()
 
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    application = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .post_init(on_startup)
+        .build()
+    )
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
-    start_scheduler(application)
 
     logger.info("Atlas bot starting (polling mode)...")
     application.run_polling()
